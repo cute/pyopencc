@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: pyopencc
+Version: 0.4.2
+Summary: OpenCC Python binding
+Home-page: http://code.google.com/p/opencc/
+Author: Guangming Li
+Author-email: leeful@gmail.com
+License: Apache License
+Description: OpenCC Python binding
+Platform: UNKNOWN
