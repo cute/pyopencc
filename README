@@ -1,56 +1,41 @@
-======================
-What is pyOpenCC?
-======================
+### What is pyOpenCC?
 
-pyOpenCC is a Python wrapper for `Open Chinese Converter`_
+pyOpenCC is a Python wrapper for [Open Chinese Converter](http://code.google.com/p/opencc/)
 
-.. _`Open Chinese Converter`: http://code.google.com/p/opencc/
-
-============
-Installation
-============
+### Installation
 
 You need to install opencc-dev first, To install OpenCC:
 
-Debian
-::
+Debian:
 
     apt-get install libopencc-dev -y
 
-FreeBSD
-::
+FreeBSD:
 
     cd /usr/ports/chinese/opencc
     make install clean
 
 To install pyopencc:
-::
 
     git clone https://github.com/cute/pyopencc.git
     cd pyopencc
     python setup.py build_ext -I /usr/local/include/opencc/
     python setup.py install
 
-==============
-How to use it?
-==============
+### How to use it?
 
-Following is a simple example
-
-::
+Following is a simple example:
 
     # -*- coding: utf8 -*-
     import opencc
     cc = opencc.OpenCC('zht2zhs.ini')
     print cc.convert(u'Open Chinese Convert（OpenCC）「開放中文轉換」，是一個致力於中文簡繁轉換的項目，提供高質量詞庫和函數庫(libopencc)。')
 
-And the output should be
+And the output should be:
 
-::
+    Open Chinese Convert（OpenCC）「开放中文转换」，是一个致力于中文简繁转换的项目，提供高质量词库和函数库(libopencc)。
 
-   Open Chinese Convert（OpenCC）「开放中文转换」，是一个致力于中文简繁转换的项目，提供高质量词库和函数库(libopencc)。
-
-There are four convertion in opencc.
+There are four convertion in opencc:
 
  * zht2zhs.ini - Traditional Chinese to Simplified Chinese
  * zhs2zht.ini - Simplified Chinese to Traditional Chinese
