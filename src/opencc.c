@@ -9,7 +9,6 @@ typedef struct {
 } openccobject;
 
 static PyTypeObject Opencctype;
-static PyObject *OpenccError;
 
 static PyObject *
 new_opencc_object(char *config)
@@ -21,7 +20,7 @@ new_opencc_object(char *config)
         return NULL;
 
     if (!(dp->opencc = opencc_open(config))) {
-        PyErr_SetString(OpenccError, "Cannot open config file.");
+        PyErr_SetString(PyExc_IOError, "Cannot open config file.");
         Py_DECREF(dp);
         return NULL;
     }
@@ -60,24 +59,72 @@ opencc__close(register openccobject *dp, PyObject *args)
 static PyObject *
 opencc__convert(register openccobject *dp, PyObject *args)
 {
-    char *inbuf;
-    char *outbuf;
-    int inbuf_len;
+    PyObject *str;
     PyObject *ret;
+    PyObject *tmp;
 
-    if (!PyArg_ParseTuple(args, "s#:convert", &inbuf, &inbuf_len))
+    int  is_unicode = 0;
+    char *out = NULL;
+
+    if (!PyArg_ParseTuple(args, "O:convert", &str))
         return NULL;
 
-    outbuf = opencc_convert_utf8(dp->opencc, inbuf, inbuf_len);
-    ret = PyString_FromString(outbuf);
-    free(outbuf);
-    return ret;
+    if(!dp->opencc){
+        PyErr_SetString(PyExc_ValueError, "ValueError: I/O operation on closed file.");
+        return NULL;
+    }
 
+    if (PyString_Check(str)){
+        tmp = str;
+    }else if (PyUnicode_Check(str)){
+        is_unicode = 1;
+        tmp = PyUnicode_AsUTF8String(str);
+    }else{
+        PyErr_SetString(PyExc_TypeError, "TypeError: must be string or buffer.");
+        return NULL;
+    }
+
+    out = opencc_convert_utf8(dp->opencc,
+                PyString_AsString(tmp),
+                PyString_Size(tmp));
+
+    ret = PyString_FromString(out);
+    PyMem_Free(out);
+
+    if(is_unicode){
+        Py_DECREF(tmp);
+        tmp = PyString_AsDecodedObject(ret, "utf8", NULL);
+        Py_DECREF(ret);
+        ret = tmp;
+    }
+
+    return ret;
+}
+
+static PyObject *
+opencc__set_conversion_mode(register openccobject *dp, PyObject *args)
+{
+    long conversion_mode;
+
+    if (!PyArg_ParseTuple(args, "l:set_conversion_mode", &conversion_mode))
+        return NULL;
+
+    if(conversion_mode < 0 || conversion_mode > 2){
+        PyErr_SetString(PyExc_ValueError, "ValueError: conversion mode must be in [0,1,2].");
+        return NULL;
+    }
+
+    opencc_set_conversion_mode(dp->opencc, conversion_mode);
+
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 static PyMethodDef opencc_methods[] = {
     {"close", (PyCFunction)opencc__close, METH_VARARGS,
-     "close()\nClose the database."},
+     "close()\nClose the handler."},
+    {"set_conversion_mode", (PyCFunction)opencc__set_conversion_mode, METH_VARARGS,
+     "set_conversion_mode(conversion_mode)\nset conversion mode."},
     {"convert", (PyCFunction)opencc__convert, METH_VARARGS,
      "convert(text) -> value\n"
      "Return conversion."},
@@ -93,7 +140,7 @@ opencc_getattr(openccobject *dp, char *name)
 static PyTypeObject Opencctype = {
     PyObject_HEAD_INIT(NULL)
     0,
-    "opencc.opencc",
+    "opencc.OpenCC",
     sizeof(openccobject),
     0,
     (destructor)opencc_dealloc,  /*tp_dealloc*/
@@ -147,9 +194,6 @@ initopencc(void) {
         return;
 
     d = PyModule_GetDict(m);
-    if (OpenccError == NULL)
-        OpenccError = PyErr_NewException("opencc.error", NULL, NULL);
-
     s = PyString_FromString("OpenCC Python binding");
     if (s != NULL) {
         PyDict_SetItemString(d, "__doc__", s);
@@ -162,6 +206,15 @@ initopencc(void) {
         Py_DECREF(s);
     }
 
-    if (OpenccError != NULL)
-        PyDict_SetItemString(d, "error", OpenccError);
+    // Default conversion mode.
+    PyDict_SetItem(d, Py_BuildValue("s", "CONVERSION_FAST"),
+        PyLong_FromLong((long)0));
+
+    // Only converts text into segments.
+    PyDict_SetItem(d, Py_BuildValue("s", "CONVERSION_SEGMENT_ONLY"),
+        PyLong_FromLong((long)1));
+
+    // List all candidates of every segment.
+    PyDict_SetItem(d, Py_BuildValue("s", "CONVERSION_LIST_CANDIDATES"),
+        PyLong_FromLong((long)2));
 }
